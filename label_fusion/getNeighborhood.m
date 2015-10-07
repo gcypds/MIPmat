@@ -42,9 +42,9 @@ patches = sub2ind(siz(1:3),tmp1(:),tmp2(:),tmp3(:)) - sub2ind(siz(1:3),r(1),r(2)
 
 indices = bsxfun(@plus,patches,neighs');
 
-BTH = X(indices);
+BTH = reshape(X(indices),size(indices));
 if isempty(L)
   LBL = [];
 else
-  LBL = L(indices);  
+  LBL = reshape(L(neighs'),size(neighs'));
 end

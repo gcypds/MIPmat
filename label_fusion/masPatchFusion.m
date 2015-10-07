@@ -1,31 +1,40 @@
-function L=masPatchFusion(imgqry,supdata,supdata_lbl,band_method,NG,PTH,schspels)
+function L=masPatchFusion(imgqry,supdata,supdata_lbl,opts,schspels)
 % Generate the label segmentation by Multi-Atlas Segmentation using
 % Patch-wise label Fusion.
 % USAGE:
-% L = Patch_fusion_MAS(imgqry,supdata,supdata_lbl,band_method,NG,PTH,schspels)
+% L = masPatchFusion(imgqry,supdata,supdata_lbl,opts,schspels)
 % INPUTS:
 % imgqry       - Intensity MRI wich is wanted to segment.
 % supdata      - Is a 4-D Matrix size: [m x n x p x NS] wich holds a set of 
 %                NS Intensity Atlases.
 % supdata_lbl  - Is a 4-D Matrix size: [m x n x p x NS] wich holds a set of 
 %                NS Labeled Atlases.
-% band_method  - Type of method used to compute the weights used in patch
-%                label fusion methods:
-%                  0 = All weights are set to 1 (same value);
-%                  1 = w are computed according to [1] (similarity measure);
-%                  2 = w are computed according to [2] (sparse restriction);
-% NG            - Radius of Search neighborhood
-% PTH           - Radius of Patch
+% opts         - Option strucuture with fields:
+%                 alpha: patch radius (default 0)
+%                 beta:  neighborhood radius (default 0)
+%                 ss: Binary flag to perform patch selection by structure
+%                  similarity (default false). 
+%                 weighting_method: Method to compute the weights used in 
+%                  patch label fusion:
+%                  0 = All weights are set to 1 (default);
+%                  1 = w are computed according to [1] (similarity measure)
+%                  2 = w are computed according to [2] (sparse restriction)
+%                 feat_method: Method to compute patch features:
+%                  0 = Patch intensities are used as features (default).
+%                  1 = Linear mapping of patch intensities is used as
+%                      features. Mapping is automatically computed using
+%                      Centered Kernel Alignment according to [3].
 % schspels      - (optional) Holds the set of spels where the labels are
 %                 estimated. If it is not specified, all elements in imgqry
 %                 are labeled.
 % 
 % OUTPUT:   
 % L             - Resulting segmentation on the specified
-%                 spels(schspels ).
+%                 spels.
 % 
 % REQUIREMENTS:
 % SLEP package, available in http://yelab.net/software/SLEP/
+% MLmat package, available in https://github.com/gcypds/MLmat
 % 
 %RELATED PAPERS:
 % [1] Coupe, P., Manjon, J.V., Fonov, V., Pruessner, J., Robles, M., Collins
@@ -36,8 +45,28 @@ function L=masPatchFusion(imgqry,supdata,supdata_lbl,band_method,NG,PTH,schspels
 %    brain images via sparse patch representation. MICCAIWorkshop on 
 %    Sparsity Techniques inMedical Imaging, Nice, France.
 %
+% [3] Cortes, C., Mohri, M., & Rostamizadeh, A. 2012. Algorithms for 
+%   learning kernels based on centered alignment. The Journal of Machine 
+%   Learning Research, 13(1), 795-828.
+%
 % Created on Wed Oct  7 11:18:05 2015
 % Mauricio Orbes Arteaga - GCPDS
+% David Cardenas Pena - GCPDS
+
+if isempty(opts)
+ alpha = 1;
+ beta  = 2;
+ ss  = false;
+ weighting_method = 0;
+ feat_method = 0;
+else
+ ss  = opts.ss;
+ alpha = opts.alpha;
+ beta = opts.beta;
+ weighting_method = opts.weighting_method;
+ feat_method = opts.feat_method;
+end
+
 
 
 if isempty(schspels)
@@ -50,12 +79,28 @@ L=zeros(size(imgqry));
 for indc=1:numel(schspels)
   
   %Neighborhood contruction:
-  Aph=getNeighborhood(imgqry,[],[x(indc) y(indc) z(indc)],PTH,0);
-  [BTH,LBL]=getNeighborhood(supdata,supdata_lbl,[x(indc) y(indc) z(indc)],PTH,NG);    
-  [BTH,LBL]=ssim(Aph,BTH,LBL,0.9);
+  Aph=getNeighborhood(imgqry,[],[x(indc) y(indc) z(indc)],alpha,0);
+  [BTH,LBL]=getNeighborhood(supdata,supdata_lbl,[x(indc) y(indc) z(indc)],alpha,beta);    
+  
+  %Similarity structure selection
+  if ss
+    [BTH,LBL]=ssim(Aph,BTH,LBL,0.9);
+  end
+  
+  %Feature computation
+  switch feat_method
+  %case 0: Patch intensities are the features.
+  case 1
+    BTH = zscore([BTH Aph]');
+    Aph = BTH(end,:)';
+    BTH = BTH(1:end-1,:)';
+    A = kMetricLearningMahalanobis(BTH',pdist2(LBL',LBL')==0,LBL',0,false,false,[1e-4 1e-5]);
+    BTH = A'*BTH;
+    Aph = A'*Aph;
+  end
     
   %Weights computation:
-  switch band_method        
+  switch weighting_method        
   case 0
     w = ones(1,size(BTH,2));
   case 1

@@ -1,14 +1,17 @@
 %Example MAS segmenation script
 % Created on Wed Oct  7 15:04:41 2015
 % Mauricio Orbes Arteaga - GCPDS
+% David Cardenas Pena - GCPDS
 
 clear all
 close all
 clc
 
-weighting_method=1; %similarity-based weighting
-alpha=floor(3/2);   %Patch radius
-beta=floor(5/2);    %Neighborhood radius
+opts.weighting_method=1;    %similarity-based weighting
+opts.feat_method=0;         %patch features
+opts.ss = false;          %Avoid structure similarity selection
+opts.alpha=floor(3/2);   %Patch radius
+opts.beta=floor(5/2);    %Neighborhood radius
 
 load sample_data/bw_db
 
@@ -22,6 +25,6 @@ mask(80:100,80:100,80:100) = ones; %Mask to segment
 indices = find(mask(:));           %Indices to segment
 
 %Perform Multi Atlas Segmentation by Patch-wise Label Fusion
-O = masPatchFusion(imgqry,supdata,supdata_lbl,weighting_method,beta,alpha,indices);
+O = masPatchFusion(imgqry,supdata,supdata_lbl,opts,indices);
 
 Accuracy = 100*sum(O(indices)==L4(indices))/numel(indices);
