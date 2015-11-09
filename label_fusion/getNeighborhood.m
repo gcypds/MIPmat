@@ -1,4 +1,4 @@
-function [BTH,LBL] = getNeighborhood(X,L,r,alpha,beta)
+function [BTH,LBL,neighs] = getNeighborhood(X,L,r,alpha,beta)
 % getNeighborhood: extracts patches in a neighborhood from an array of
 % 3D volumes.
 % USAGE: [BTH,LBL] = getNeighborhood(X,L,r,alpha,beta)

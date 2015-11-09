@@ -92,8 +92,8 @@ for indc=1:numel(schspels)
   %case 0: Patch intensities are the features.
   case 1
     BTH = zscore([BTH Aph]');
-    Aph = BTH(end,:)';
-    BTH = BTH(1:end-1,:)';
+    Aph = BTH(end-size(Aph,2)+1:end,:)';
+    BTH = BTH(1:end-size(Aph,2),:)';
     A = kMetricLearningMahalanobis(BTH',pdist2(LBL',LBL')==0,LBL',0,false,false,[1e-4 1e-5]);
     BTH = A'*BTH;
     Aph = A'*Aph;
@@ -110,6 +110,6 @@ for indc=1:numel(schspels)
   end
   
   %Label fusion estimation:
-  L(x(indc),y(indc),z(indc))=weightedVoting(w,LBL');
+  L(qInd)=weightedVoting(w,LBL');
     
 end
